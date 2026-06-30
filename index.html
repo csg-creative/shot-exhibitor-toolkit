@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Custom Toolkit</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f0f0f0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── TOP BAR ── */
+    #topbar {
+      background: #fff;
+      border-bottom: 1px solid #e8e8e8;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    #topbar h1 { font-size: 15px; font-weight: 600; color: #1a1a1a; letter-spacing: -.01em; }
+    #topbar-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+    #sizes-hint { font-size: 12px; color: #bbb; white-space: nowrap; }
+
+    .btn {
+      padding: 12px 18px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .15s;
+      letter-spacing: -.01em;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: .4; cursor: default; }
+    .btn-primary { background: #1a1a1a; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+    .btn-primary:not(:disabled):hover { background: #333; }
+    .btn-ghost { background: transparent; color: #666; border: 1px solid #e0e0e0; font-size: 12px; padding: 5px 12px; }
+    .btn-ghost:hover { background: #f7f7f7; }
+
+    /* ── MAIN ── */
+    #main {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 36px 20px;
+    }
+
+    #form-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e8e8e8;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+      width: 100%;
+      max-width: 540px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .panel-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #aaa;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    #fields-form { display: flex; flex-direction: column; gap: 12px; }
+    .field-group { display: flex; flex-direction: column; gap: 6px; }
+    .field-group > label { font-size: 12px; color: #555; font-weight: 500; }
+    .field-group textarea {
+      width: 100%;
+      background: #f7f7f7;
+      border: 1px solid #e8e8e8;
+      color: #1a1a1a;
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 42px;
+      line-height: 1.4;
+      transition: border-color .12s;
+    }
+    .field-group textarea:focus { outline: none; border-color: #999; background: #fff; }
+    .char-count { font-size: 11px; color: #bbb; text-align: right; }
+    .char-count.limit { color: #c00; }
+
+    .img-upload {
+      border: 2px dashed #e0e0e0;
+      border-radius: 8px;
+      padding: 22px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      font-size: 12px;
+      color: #bbb;
+      line-height: 1.6;
+    }
+    .img-upload:hover { border-color: #999; color: #888; background: #fafafa; }
+    .img-thumb-wrap { display: flex; flex-direction: column; gap: 8px; }
+    .img-thumb {
+      width: 100%;
+      max-height: 120px;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid #e8e8e8;
+      background: #fafafa;
+      padding: 6px;
+    }
+
+    #no-fields-hint { font-size: 13px; color: #bbb; line-height: 1.6; }
+    #export-status { font-size: 12px; color: #888; text-align: center; min-height: 18px; }
+
+    .section-divider {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #aaa;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f0f0f0;
+      margin-top: 4px;
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #e0e0e0; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #ccc; }
+
+    @media (max-width: 600px) {
+      #main { padding: 16px; }
+      #form-card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     CONFIGURATION — edit this block
+═══════════════════════════════════════════ -->
+<script>
+  // ── Google Analytics ──────────────────────
+  const GA_MEASUREMENT_ID = '';
+
+  // ── Templates ─────────────────────────────
+  // Replaced automatically by Export Client File in the Template Builder.
+  const TEMPLATES = [
+  {
+    "id": "t1781552265208k275",
+    "name": "828x315",
+    "bgUrl": "/images/2027-Exhibitor-Custom-Banners_828x315.png",
+    "bgColor": "#444444",
+    "canvasW": 828,
+    "canvasH": 315,
+    "layers": [
+      {
+        "id": "l1781552302464mhnx",
+        "type": "text",
+        "label": "Company Name",
+        "editable": true,
+        "maxLength": 0,
+        "content": "Company Name",
+        "x": 245,
+        "y": 200,
+        "w": 530,
+        "h": 35,
+        "fontSize": 25,
+        "fontWeight": "bold",
+        "color": "#ffffff",
+        "align": "left",
+        "opacity": 1,
+        "templateOnly": false
+      },
+      {
+        "id": "l1781620321976m2oc",
+        "type": "text",
+        "label": "Booth #",
+        "editable": true,
+        "maxLength": 0,
+        "content": "Booth #",
+        "x": 245,
+        "y": 238,
+        "w": 530,
+        "h": 35,
+        "fontSize": 25,
+        "fontWeight": "bold",
+        "color": "#ffffff",
+        "align": "left",
+        "opacity": 1,
+        "templateOnly": false
+      }
+    ]
+  },
+  {
+    "id": "t178155243161458gv",
+    "name": "Invite",
+    "bgUrl": "/images/2027-SHOT-Show-Custom-Exhibitor-Invite.png",
+    "bgColor": "#444444",
+    "canvasW": 1224,
+    "canvasH": 1584,
+    "layers": [
+      {
+        "id": "l17815524526289dyy",
+        "type": "text",
+        "label": "Company Name",
+        "editable": true,
+        "maxLength": 0,
+        "content": "Company Name",
+        "x": 610,
+        "y": 1100,
+        "w": 480,
+        "h": 53,
+        "fontSize": 30,
+        "fontWeight": "bold",
+        "color": "#000000",
+        "align": "left",
+        "opacity": 1,
+        "templateOnly": false
+      },
+      {
+        "id": "l17815524979732t2a",
+        "type": "text",
+        "label": "Booth #",
+        "editable": true,
+        "maxLength": 0,
+        "content": "Booth #",
+        "x": 610,
+        "y": 1152,
+        "w": 480,
+        "h": 44,
+        "fontSize": 30,
+        "fontWeight": "normal",
+        "color": "#000000",
+        "align": "left",
+        "opacity": 1,
+        "templateOnly": false
+      },
+      {
+        "id": "l1781552533977690j",
+        "type": "text",
+        "label": "Company Description",
+        "editable": true,
+        "maxLength": 0,
+        "content": "Company description",
+        "x": 610,
+        "y": 1208,
+        "w": 480,
+        "h": 202,
+        "fontSize": 26,
+        "fontWeight": "normal",
+        "color": "#000000",
+        "align": "left",
+        "opacity": 1,
+        "templateOnly": true
+      },
+      {
+        "id": "l1781552555624bnrc",
+        "type": "imageField",
+        "label": "Logo",
+        "x": 238,
+        "y": 1092,
+        "w": 311,
+        "h": 333,
+        "bdEnabled": false,
+        "bdColor": "#ffffff",
+        "bdPad": 12,
+        "bdRadius": 8,
+        "opacity": 1,
+        "templateOnly": false
+      }
+    ]
+  },
+  {
+    "id": "t17815527035569gri",
+    "name": "300x100",
+    "bgUrl": "/images/2027-Exhibitor-Custom-Banners_300x100.png",
+    "bgColor": "#444444",
+    "canvasW": 300,
+    "canvasH": 100,
+    "layers": [
+      {
+        "id": "l1781552719006o3e3",
+        "type": "text",
+        "label": "Company Name",
+        "editable": true,
+        "maxLength": 0,
+        "content": "Company Name",
+        "x": 20,
+        "y": 55,
+        "w": 260,
+        "h": 21,
+        "fontSize": 13,
+        "fontWeight": "bold",
+        "color": "#ffffff",
+        "align": "center",
+        "opacity": 1,
+        "templateOnly": false
+      },
+      {
+        "id": "l1781620500378kvhu",
+        "type": "text",
+        "label": "Booth #",
+        "editable": true,
+        "maxLength": 0,
+        "content": "Booth #",
+        "x": 20,
+        "y": 75,
+        "w": 260,
+        "h": 16,
+        "fontSize": 13,
+        "fontWeight": "normal",
+        "color": "#ffffff",
+        "align": "center",
+        "opacity": 1,
+        "templateOnly": false
+      }
+    ]
+  }
+];
+</script>
+<!-- ═══════════════════════════════════════════ -->
+
+<!-- GA4 snippet -->
+<script>
+  (function() {
+    if (!window.GA_MEASUREMENT_ID) return;
+    var s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_MEASUREMENT_ID;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function(){ dataLayer.push(arguments); };
+    gtag('js', new Date());
+    gtag('config', GA_MEASUREMENT_ID);
+  })();
+  function gaEvent(name, params) {
+    if (typeof gtag === 'function') gtag('event', name, params || {});
+  }
+</script>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <h1>Custom Toolkit</h1>
+  <div id="topbar-right">
+    <span id="sizes-hint"></span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="form-card">
+    <span class="panel-label">Customize</span>
+    <div id="fields-form"></div>
+    <div id="export-status"></div>
+    <button class="btn btn-primary" id="btn-export" style="width:100%;">Export All Sizes</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+const valuesByLabel = {};    // label -> string (text) or Image object (imageField)  [shared fields]
+const exclusiveValues = {};  // `${templateId}:${layerId}` -> value                   [template-only fields]
+const bgCache = {};          // templateId -> { img, loaded, failed }
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+function init() {
+  const count = TEMPLATES.length;
+  document.getElementById('sizes-hint').textContent =
+    count === 1 ? '1 size' : count + ' sizes';
+  document.getElementById('btn-export').addEventListener('click', doExport);
+  preloadBgImages();
+  buildForm();
+  gaEvent('toolkit_load');
+}
+
+// ══════════════════════════════════════════════════════
+// FIELDS — shared (deduplicated by label) + template-specific
+// ══════════════════════════════════════════════════════
+function getFields() {
+  const shared = new Map(); // label -> layer
+  const exclusive = [];     // { template, layer }
+  TEMPLATES.forEach(t => {
+    (t.layers || []).forEach(l => {
+      const editable = (l.type === 'text' && l.editable !== false) || l.type === 'imageField';
+      if (!editable) return;
+      if (l.templateOnly) {
+        exclusive.push({ template: t, layer: l });
+      } else {
+        if (!shared.has(l.label)) shared.set(l.label, l);
+      }
+    });
+  });
+  return { shared: [...shared.values()], exclusive };
+}
+
+// ══════════════════════════════════════════════════════
+// FORM
+// ══════════════════════════════════════════════════════
+function buildForm() {
+  const form = document.getElementById('fields-form');
+  form.innerHTML = '';
+  const { shared, exclusive } = getFields();
+
+  if (!shared.length && !exclusive.length) {
+    form.innerHTML = '<div id="no-fields-hint">No editable fields in these templates.</div>';
+    return;
+  }
+
+  shared.forEach(layer => form.appendChild(makeFieldGroup(layer, valuesByLabel, layer.label)));
+
+  // group exclusive fields by template
+  const byTemplate = new Map();
+  exclusive.forEach(({ template, layer }) => {
+    if (!byTemplate.has(template.id)) byTemplate.set(template.id, { template, layers: [] });
+    byTemplate.get(template.id).layers.push(layer);
+  });
+
+  byTemplate.forEach(({ template, layers }) => {
+    const divider = document.createElement('div');
+    divider.className = 'section-divider';
+    divider.textContent = template.name;
+    form.appendChild(divider);
+    layers.forEach(layer => {
+      const key = template.id + ':' + layer.id;
+      form.appendChild(makeFieldGroup(layer, exclusiveValues, key));
+    });
+  });
+}
+
+function makeFieldGroup(layer, store, key) {
+  const group = document.createElement('div');
+  group.className = 'field-group';
+
+  const lbl = document.createElement('label');
+  lbl.textContent = layer.label || (layer.type === 'imageField' ? 'Image' : 'Text');
+  group.appendChild(lbl);
+
+  if (layer.type === 'text') {
+    const ta = document.createElement('textarea');
+    ta.rows = 2;
+    ta.value = store[key] != null ? store[key] : (layer.content || '');
+    if (layer.maxLength > 0) ta.maxLength = layer.maxLength;
+    group.appendChild(ta);
+
+    let counter = null;
+    if (layer.maxLength > 0) {
+      counter = document.createElement('div');
+      counter.className = 'char-count';
+      group.appendChild(counter);
+    }
+    const updateCounter = () => {
+      if (!counter) return;
+      counter.textContent = ta.value.length + ' / ' + layer.maxLength;
+      counter.classList.toggle('limit', ta.value.length >= layer.maxLength);
+    };
+    updateCounter();
+    ta.addEventListener('input', () => { store[key] = ta.value; updateCounter(); });
+
+  } else { // imageField
+    const slot = document.createElement('div');
+    const renderSlot = () => {
+      slot.innerHTML = '';
+      const img = store[key];
+      if (img) {
+        const wrap = document.createElement('div');
+        wrap.className = 'img-thumb-wrap';
+        const thumb = document.createElement('img');
+        thumb.className = 'img-thumb';
+        thumb.src = img.src;
+        const remove = document.createElement('button');
+        remove.className = 'btn btn-ghost';
+        remove.textContent = 'Remove image';
+        remove.addEventListener('click', () => { delete store[key]; renderSlot(); });
+        wrap.appendChild(thumb);
+        wrap.appendChild(remove);
+        slot.appendChild(wrap);
+      } else {
+        const upload = document.createElement('div');
+        upload.className = 'img-upload';
+        upload.innerHTML = '⬆ Click to upload<br/><span style="font-size:10px;">PNG or JPG (RGB color mode recommended)</span>';
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/png,image/jpeg,image/gif,image/webp,image/svg+xml';
+        input.style.display = 'none';
+        upload.addEventListener('click', () => input.click());
+        input.addEventListener('change', () => {
+          const file = input.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = e => {
+            const img = new Image();
+            img.onload = () => { store[key] = img; renderSlot(); };
+            img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+          input.value = '';
+        });
+        slot.appendChild(upload);
+        slot.appendChild(input);
+      }
+    };
+    renderSlot();
+    group.appendChild(slot);
+  }
+
+  return group;
+}
+
+// ══════════════════════════════════════════════════════
+// BACKGROUND IMAGE PRELOAD
+// ══════════════════════════════════════════════════════
+function preloadBgImages() {
+  TEMPLATES.forEach(t => {
+    if (!t.bgUrl) return;
+    const entry = { img: new Image(), loaded: false, failed: false };
+    entry.img.crossOrigin = 'anonymous';
+    entry.img.onload  = () => { entry.loaded = true; };
+    entry.img.onerror = () => { entry.failed = true; };
+    entry.img.src = t.bgUrl.replace(/^\//, '');
+    bgCache[t.id] = entry;
+  });
+}
+
+function loadBgImage(t) {
+  return new Promise(resolve => {
+    if (!t.bgUrl) { resolve(null); return; }
+    const entry = bgCache[t.id];
+    if (!entry)       { resolve(null); return; }
+    if (entry.loaded) { resolve(entry.img); return; }
+    if (entry.failed) { resolve(null); return; }
+    entry.img.addEventListener('load',  () => resolve(entry.img), { once: true });
+    entry.img.addEventListener('error', () => resolve(null),      { once: true });
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER ONE TEMPLATE → PNG BLOB
+// ══════════════════════════════════════════════════════
+async function renderTemplate(t) {
+  const canvas = document.createElement('canvas');
+  canvas.width  = t.canvasW;
+  canvas.height = t.canvasH;
+  const ctx = canvas.getContext('2d');
+
+  const bgImg = await loadBgImage(t);
+  if (bgImg) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(bgImg, 0, 0, t.canvasW, t.canvasH);
+  } else {
+    ctx.fillStyle = t.bgColor || '#444444';
+    ctx.fillRect(0, 0, t.canvasW, t.canvasH);
+  }
+
+  drawLayers(ctx, t);
+
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+// ══════════════════════════════════════════════════════
+// DRAW LAYERS
+// ══════════════════════════════════════════════════════
+function drawLayers(ctx, t) {
+  (t.layers || []).forEach(layer => {
+    ctx.save();
+    ctx.globalAlpha = layer.opacity != null ? layer.opacity : 1;
+
+    if (layer.type === 'text') {
+      const val = layer.templateOnly
+        ? exclusiveValues[t.id + ':' + layer.id]
+        : valuesByLabel[layer.label];
+      const content = layer.editable !== false
+        ? (val != null ? val : (layer.content || ''))
+        : (layer.content || '');
+      if (content) drawText(ctx, layer, content);
+
+    } else if (layer.type === 'imageField') {
+      const img = layer.templateOnly
+        ? exclusiveValues[t.id + ':' + layer.id]
+        : valuesByLabel[layer.label];
+      if (img) {
+        let pad = 0;
+        if (layer.bdEnabled) {
+          pathRoundedRect(ctx, layer.x, layer.y, layer.w, layer.h, layer.bdRadius || 0);
+          ctx.fillStyle = layer.bdColor || '#ffffff';
+          ctx.fill();
+          pad = layer.bdPad != null ? layer.bdPad : 12;
+        }
+        const bw = Math.max(1, layer.w - pad * 2);
+        const bh = Math.max(1, layer.h - pad * 2);
+        const s  = Math.min(bw / img.naturalWidth, bh / img.naturalHeight);
+        const dw = img.naturalWidth  * s;
+        const dh = img.naturalHeight * s;
+        ctx.drawImage(img, layer.x + pad + (bw - dw) / 2, layer.y + pad + (bh - dh) / 2, dw, dh);
+      }
+    }
+    ctx.restore();
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// TEXT RENDERING (with auto-shrink to fit zone)
+// ══════════════════════════════════════════════════════
+function drawText(ctx, layer, content) {
+  const weight   = layer.fontWeight === 'bold' ? 'bold ' : '';
+  const fontFace = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const setFont  = sz => { ctx.font = weight + sz + 'px ' + fontFace; };
+  ctx.fillStyle    = layer.color || '#ffffff';
+  ctx.textBaseline = 'top';
+
+  let fontSize = layer.fontSize || 24;
+  setFont(fontSize);
+  let lines = wrapText(ctx, content, layer.w);
+  let lineH = fontSize * 1.3;
+
+  if (lines.length * lineH > layer.h) {
+    let lo = 8, hi = fontSize;
+    while (lo < hi - 1) {
+      const mid = Math.floor((lo + hi) / 2);
+      setFont(mid);
+      if (wrapText(ctx, content, layer.w).length * (mid * 1.3) <= layer.h) lo = mid;
+      else hi = mid;
+    }
+    fontSize = lo;
+    setFont(fontSize);
+    lines = wrapText(ctx, content, layer.w);
+    lineH = fontSize * 1.3;
+  }
+
+  let yOff = layer.y;
+  lines.forEach(line => {
+    let xOff = layer.x;
+    if (layer.align === 'center')     xOff = layer.x + layer.w / 2 - ctx.measureText(line).width / 2;
+    else if (layer.align === 'right') xOff = layer.x + layer.w     - ctx.measureText(line).width;
+    ctx.fillText(line, xOff, yOff);
+    yOff += lineH;
+  });
+}
+
+function wrapText(ctx, text, maxW) {
+  const out = [];
+  String(text).split('\n').forEach(para => {
+    const words = para.split(' ');
+    let line = '';
+    words.forEach(word => {
+      const test = line ? line + ' ' + word : word;
+      if (ctx.measureText(test).width > maxW && line) { out.push(line); line = word; }
+      else line = test;
+    });
+    out.push(line);
+  });
+  return out.length ? out : [''];
+}
+
+function pathRoundedRect(ctx, x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// ══════════════════════════════════════════════════════
+// EXPORT ALL → ZIP
+// ══════════════════════════════════════════════════════
+async function doExport() {
+  const btn    = document.getElementById('btn-export');
+  const status = document.getElementById('export-status');
+  btn.disabled = true;
+  btn.textContent = 'Exporting…';
+
+  try {
+    const zip = new JSZip();
+    for (let i = 0; i < TEMPLATES.length; i++) {
+      const t = TEMPLATES[i];
+      status.textContent = `Rendering ${i + 1} of ${TEMPLATES.length}: ${t.name}…`;
+      const blob = await renderTemplate(t);
+      zip.file(t.name + '.png', blob);
+    }
+    status.textContent = 'Building zip…';
+    const content = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = 'toolkit-graphics.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    status.textContent = '';
+    gaEvent('toolkit_export');
+  } catch (err) {
+    status.textContent = 'Export failed — please try again.';
+    console.error(err);
+  }
+
+  btn.textContent = 'Export All Sizes';
+  btn.disabled = false;
+}
+
+// ══════════════════════════════════════════════════════
+// GO
+// ══════════════════════════════════════════════════════
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
